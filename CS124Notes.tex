@@ -1,0 +1,248 @@
+\documentclass[10pt]{article}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{enumerate}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage[margin=0.3in]{geometry}
+\title{\textbf{CS 124: Operating Systems}}
+\author{Justin Leong}
+\date{\today}
+\begin{document}
+
+\maketitle
+\setlength\parindent{0pt}
+\setlist[description]{style=nextline,leftmargin=0cm}
+
+\begin{description}
+\section{Lecture 1 - 1/4/17}
+\item[What is Pintos designed to run on?]
+  IA34/x86 processor emulator (Bochs, QEMU)
+\item[What is different between Pintos and the Linux kernel implementation]
+  systems call implementation is different
+\item[Which assignments are crucial?]
+  3rd and 4th assignments; bonus points for building 6 on top of 5
+\item[What should you do if the Bochs VM doesn't work?]
+  try QEMU
+\item[What is an OS?]
+  an OS provides applications with a standardized interface to the computer's hardware resources;
+  an OS manages the allocation and sharing of hardware resources to applications that want to use them
+\item[What is an analogy for OS?]
+  government - by itself there is no reason for it to exist but provides resources for useful things to be accomplished
+\item[What did earlier disks use?]
+  cylinder-head-sector(CHS) addressing
+\item[What is used now?]
+  Logical Block Addressing(LBA)
+\item[What kinds of maintenance do different storage technologies require?]
+  Magnetic disks are sensitive to fragmentation;
+  SSDs have a constant seek time but memory blocks must be erased before they can be rewritten and the erase-block size is much larger than read/write blocks;
+  and blocks can only be erased so many times before they weaaaar out;
+  to minimize performance and wear issues, the filesystem must interact with SSDs differently than with magnetic disks
+\item[What does the OS provide for Filesystems?]
+  a standardized interface: open(), close(), read(), write();
+  other devices use essentially the same interface (socket communications, console input/output, pipes between processes)
+\item[In UNIX what happens when Process B deletes foo.txt while Process A is read/writing to it?]
+  the OS remove sthe path to the file when process B deletes foo.txt but the actual file remains until process A terminates;
+  when process A terminates, OS reclaims space used by foo.txt
+\item[What was inefficient about mainframes and punch cards?]
+  mainframe's CPU is sitting idle, blocked by I/O operations
+\item[What is batch processing?]
+  combining multiple punch cards into an input tape; job output saved to output tape
+\item[What is inefficient about batch processing?]
+  if job 1 is waiting for I/O to complete, the mainframe can't do anything else; CPU sits idle
+\item[What was introduced to try to solve this?]
+  multiprogramming - partition maingrame memory for jobs but must provide process isolation
+\item[What was another problem with batch-rpocessing mainframes?]
+  could take hours to discover a syntax error or bug
+\item[What are timesharing systems?]
+  extension of multipgoramming, allowing users to issue jobs directly on the mainframe, and receive their own output;
+  first appearance of basic multitasking in an OS
+\item[What happened to mainframes as integrated circuit tech bcame widespread?]
+  minicomputers and then microcomputers replaced them for the individual user; GUIs were developed to make it easy for people to use computers;
+  eventually multiple processors in a single computer - multiprocessor and multicore systems;
+  operating system as an application within another operating system
+\item[What are the different ways to have a host OS and guest OS?]
+  emulation - computer with one CPU type simulates another CPU;
+  virtualization - runs a guest OS compiled for the same CPU type; faster
+\item[What is a hypervisor?]
+  software that provides a virtual machine for the guest OS;
+  guest OSes expect to access hardware directly; hypervisor must present this abstraction to guest OSes
+\item[Is multiprocessor or multicore slower?]
+  multiprocessor is slower because more physical distance
+\item[When were the first big GUIs created?]
+  1960s - Doug Englebart - demo-ed a GUI that included video conferencing and shared editing system
+\item[What should we study?]
+  virtual memory
+\item[What do mainframe/server OSes worry about?]
+  don't care aboug GUI; rather support very efficient handling of I/O and possibly scheduling a large number of processes
+\item[What do PC OSes worry about?]
+  be responsive and user-friendly
+\item[What must OSes for mobile devices and tablets worry about?]
+  same thing as PS plus maximize battery life; basic device capabilities must also be rock-solid reliable
+\item[What is the most common kind of computer now?]
+  embedded computer
+\item[What are real-time operating systems?]
+  focus on completing tasks by a specific deadline
+\item[What is soft real-time support vs hard real-time guarantees?]
+  soft is not considered a system failure if it misses; hard could be like an assembly line machine
+\end{description}
+
+\begin{description}
+\section{Lecture 2 - OS Components Overview of Unix File I/O - 1/6/17}
+\item[What are common components of OSes?]
+  users, applications, operating system, computer hardware
+\item[What are system applications?]
+  services, command-line support, GUI
+\item[What are user apps designed for?]
+  to solve specific problems
+\item[What facilities does the OS itself provide?]
+  program execution (load and run programs, optionally runtime linking if shared libraries, program termination, pass along signals, etc.);
+  resource allocation (memory, disk space, cpu);
+  filesystems;
+  I/O services (read blocks of data off hardware devices);
+  communication (Inter-Process Communication (IPC));
+  accounting facility (important for cloud services to bill people (AWS));
+  error detection - degrade gracefully instead of crashing;
+  protection security - all interactions with OS are performed via system calls
+\item[Which two main features on computer processors allow operating systems to provide protection and security?]
+  multiple processor operating modes (kernel mode, user mode);
+  virtual memory - processor maps virtual addresses to physical addresses using page table
+\item[What is a kernel?]
+  part of OS that runs in kernel mode
+\item[What are hierarchical protection domains or protection rings]
+  Level 0 is kernel mode; level 3 is user mode;
+  level 1 might run guest OSes
+\item[How many protection levels do ARMv7(Advanced RISC Machines processors have?]
+  8 different protection levels for different scenarios
+\item[What can regions of memory be restricted to?]
+  kernel-mode access only or allow user-mode access; called kernel space and user space
+\item[Where can standard I/O/error streams come from?]
+  console/terminal;
+  redirected to/from disk files;
+  redirected to/from another process
+\item[Why do we have stdout and stderr?]
+  IBM had a complicated etching program;
+  result of plate just said syntax error;
+  seperate stream to output errors
+\item[What is all input-oputput performed with?]
+  ssize\_t read(int filedes, void *buf, size\_t nbyte);
+  ssize\_t write(int filedes, const void *buf, size\_t nbyte);
+\item[What is ssize\_t vs size\_t?]
+  size\_t is unsigned
+\item[What happens during I/O?]
+  context switching
+\item[What is filedes?]
+  file descriptor - index into array
+\item[What does having v\_ptr give us?]
+  it allows multiple processes to have the same file open;
+  two v\_ptr's can point to the same struct in Global Kernel Data
+\item[What are the file descriptors almost always?]
+  file descriptor 0 = standard input;
+  file descriptor 1 = standard output;
+  file descriptor 2 = standard error;
+  For sake of compatibility, always useee constants defined in unistd.h (STDIN\_FILENO, etc.)
+\item[What cares about where stdin and stdout?]
+  not programs;
+  command shells care very much;
+  grep Allow < logfile.txt > output.txt
+\item[What is > vs >>?]
+  > is write and truncate, >> is write and append
+\item[How does the child process output to the command shell's standard output? How does it get the shell's stdin?]
+  when a UNIX process is forked, it is a near-identical copy of the parent process;
+  child process has all the same files open and the same file descriptor
+\item[What does dup2 allow?]
+  duplicates specified file desciptor into the descriptor specified by filedes2;
+  allows command-shell's child process to redirect standard input and output
+\end{description}
+
+\begin{description}
+\section{Lecture 3 - Hardware Details OS Design Patterns - 1/9/17}
+\item[How do we prevent applications from accessing operating system state or code directly?]
+  OS code and state are stored in kernel space and must be kernel mode to access this data;
+  application code and state is in user space (can be manipulated in kernel mode)
+\item[What is a trap?]
+  intentional software-generated exception or interrupt;
+  during OS initialization, kernel provides a handler to be invoked by the processor when the trap occurs;
+  applications can invoke operating system subroutines without having to know what address they live at;
+  int instruction on IA32; int \$0x80 used to make Linux system calls
+\item[Why do different operating mode shave different stacks?]
+  kernel won't be affected by misbehaving programs and kernel needs much smaller stack (KBs vs MBs)
+\item[How are arguments/results passed to the interrupt handler?]
+  in registers
+\item[What happens if you change privilege levels in a int n instruction?]
+  change to the appropriate stack
+\item[What is iret?]
+  performs same sequence of steps in reverse
+\item[What allows exceptional control flow?]
+  traps, interrupts (caused by hardware devices)
+\item[What are faults?]
+  usually unintentianal exceptions generated by attempting to execute a specific instruction
+\item[What are aborts?]
+  nonrecoverable hardware errors; e.g. IA32 machine-check exception, double-fault (trying to handle an interrupt/fault and then another fault occurs), triple-fault
+\item[What is probably happening if you are stuck in a reboot loop?]
+  generating triple faults (Project 4-6)
+\item[What relies on hardware interrupts?]
+  certain kinds of multitasking; preemptive multitasking
+\item[What is cooperative multitasking?]
+  each process voluntarily relinquishes the CPU, e.g. waiting for an IO operation, when it yields, or terminates
+\item[What is the problem with cooperative multitasking? What is the solution?]
+  malicious or badly designed programs won't relinquish the CPU;
+  solution to incorporate a hardware timer(kernel-mode access) into the computer (preemptive multitasking)
+\item[What handles hardware interrupts?]
+  Local APIC; I/O APIC
+\item[What do APICs allow processors to send to each other?]
+  inter-processor interrupts (IPIs)
+\item[How is hardware interrupt handling important with long-running I/O operations?]
+  when I/O operation is finished, hardware fires an interrupt to notify the OS since context switching
+\item[What does long running operations mean?]
+  context switching
+\item[What are hardware facilitiy requirements?]
+  dual-mode operation, virtual memory management, ability to trap, support for software/hardware interrupts, hardware timer facility
+\item[What is a guiding principle in OS design?]
+  seperation of policy and mechanism (e.g. APIC on single vs multi-core systems)
+\item[What is policy?]
+  specifies what needs to be done; very likely to change
+\item[What is mechanism?]
+  specifies how to do it; unlikely to change substantially over time for a given OS and set of hardware
+\item[What are the various structural patterns?]
+  simple structure - no structure - anything can access anything;
+\item[What are the problems of a simple structure?]
+  highly susceptible to bugs and malicious programs, difficult to extend OS's functionality
+\item[What was the problem with MS-DOS?]
+  it used a simple structure because processors had no protected mode execution;
+  resident programs could control hardware
+\item[What mechanism did the initial versions of UNIX use as a design?]
+  monolithic kernels - susceptible to bugs but fast
+\item[How do you avoid the issues of monolithic OS's?]
+  layered structure - higher layers rely on ops exposed by lower layers, layers can be tested in isolation
+\item[When was the first layered strucutre OS implemented?]
+  1965-68 by Edsger Dijkstra at THE(Technische Hogeschool Eindhoven), the THE OS
+\item[What are the advantages of the layered structure?]
+  resulted in a very reliable OS with a low rate of bugs
+\item[What are the disadvantages of the layered structure?]
+  takes a long time to design/implement, reduces OS performance
+\item[What are the tradeoffs of layers?]
+  make fewer layers with greater functionality
+\item[What are modular kernels?]
+  modern monolithic kernels use loadable kernel modules; modules will say what its dependencies are
+\item[What are benefits of modular kernels?]
+  retains high performance of monolithic kernels;
+  encapsulate critical module state;
+  smaller monolithic kernel
+\item[What are drawbacks of modular kernels?]
+  only slightly reduces reliability issues;
+  modules run in kernel mode so bugs can cause OS to crash
+\end{description}
+
+
+\begin{description}
+\section{Lecture 3 - Hardware Details OS Design Patterns - 1/9/17}
+\item[]
+\end{description}
+
+\end{document}
