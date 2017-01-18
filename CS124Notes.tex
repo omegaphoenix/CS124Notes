@@ -241,8 +241,130 @@
 
 
 \begin{description}
-\section{Lecture 3 - Hardware Details OS Design Patterns - 1/9/17}
-\item[]
+\section{Lecture 4 - OS Design Patterns II - 1/11/17}
+\item[What general OS design patterns are there?]
+  simple structure, layered structure, monolithic kernels, modular kernels
+\item[What OS facilities actually require kernel-mode access?]
+  only ones that must use privileged CPU capabilities
+\item[What OS structural approach restricts the kernel to contain only a minimal set of capabilities?]
+  microkernels - extremely small (< 10K lines of code)
+\item[What facilities should be included in the kernel?]
+  Jochen Liedtke's minimality principle - pull it out of microkernel unless you can't;
+  Process abstraction: context switches, CPU scheduling, interrupt handling;
+  Memory abstraction: process address-space isolation, kernel/user memory separation;
+  Inter-process communication facilities: required to allow user-mode processes to work together
+\item[What else does the microkernel need to faciliate?]
+  drivers often require privileged I/O port access; process scheduling is often also supported
+\item[What are the benefits of microkernels?]
+  very reliable (small amount of kernel code);
+  make services more resilient since reliability does not meant state is never lost;
+  supporting multiprocessor or multiple-computer systems become very easy by extending IPC mechanism to support messages between processors;
+\item[What are the drawbacks of microkernels?]
+  performance - message-passing is asynchronous
+\item[What was the problem with CMU Mach 3.0?]
+  implemented on top of BSD Linux but performance was bad;
+  different subsytems don't have all the details they need to make good choices
+\item[How did Jochen Liedtke improve it?]
+  completely new IPC mechanisms(L3, L4) which achieved order of magnitude improvement
+\item[How did L4 improve Mach 3.0?]
+  fewer system calls per IPC interaction, handles short and long IPC messages differently;
+  performs direct process switch whenever possible;
+  can negatively impact real-time guarantees since it isn't running scheduler;
+  http://os.inf.tu-dresden.de/L4/
+\item[What kernel structure replaced microkernels?]
+  hybrid kernels which have same conceptual structure but move some services into kernel;
+  MacOS X and Windows NT is a hybrid kernel
+\item[What are exokernels?]
+  Give applications direct control over hardware;
+  XOmB, Nemesis, MIT XOS
+\item[What are the 5 design patterns for OS's?]
+  simple structure; layered structure;
+  monolithic kernels, modular kernels;
+  microkernels, hybrid kernels;
+  exokernels
 \end{description}
 
+\begin{description}
+\section{Lecture 5 - Bootstrap, PC Bios, and IA32 Memory Modes - 1/13/17}
+\item[How do computers load the OS?]
+  implement a bootstrap process - series of one or more boot-loaders
+\item[How do modern computers load the OS?]
+  typicaly use read-only memory containing initial code (ROM)
+\item[How do old computers load the OS before ROM?]
+  read limited intructions from external source then begin executing;
+  punched-cards executed one at a time;
+  bank of switches to specify first command;
+  computers used diode matrixes (card with bunch of diodes - clip out diodes to put program in)
+\item[What is firmware?]
+  combination of persistent memory and the program stored in it
+\item[What is PC BIOS?]
+  original firmware for x86 computers;
+\item[What two critical features, and a third useful one does PC BIOS provide?]
+  firmware bootloader to start the bootstrap process;
+  library of basic I/O functions for interacting with the computer hardware;
+  simple UI for hardware config
+\item[Why do you need to write bootloader in assembly code?]
+  only 512 bytes in boot sector
+\item[What is MBR?]
+  mastor boot record - first sector of hard disk
+\item[What do bootloaders rely on BIOS functions for?]
+  interacting with hardware; all functions invoked via software interrupts
+\item[What is the limitation of CHS addressing?]
+  can only access 8 GiB
+\item[what was introduced to fix this?]
+  logical block addressing
+\item[What is a segmented memory model?]
+  can be segmented; segments meaning depends on memory addressing mode;
+  real-addressing mode - generally only 16-bit registers, can use 32-bit registers on 32-bit platforms
+  segments overlap in physical memory
+\item[What do we want to use instead of real-addressing mode?]
+  protected-mode;
+  also uses the segment registers
+\item[What is the Global Descriptor Table?]
+  in protected mode, segment selectors not used directly, use GDT instead
+\item[Why does virtual memory exist?]
+  segments, not pages were used in the old days for memory
+\end{description}
+
+\begin{description}
+\section{Lecture 6 - IA32 OS Startup UEFI firmware - 1/18/17}
+\end{description}
+\item[What is the IA32 Bootstrap process?]
+  At power on, IA32 processor starts executing instructions at address 0xFFFFFFF0;
+  BIOS bootstrap code performs a power-on self test;
+  load first 512-byte sector of each bootable device at address 0x7C00;
+  if MBR bootloader, chain-load boot sector;
+  load OS kernel and jump to kernel bootstrap code
+\item[What happens during the switch from real to protected mode?]
+  switch from real-addressing mode to protected mode;
+  check if A20 is disabled and then re-enable to access > 1 MiB of memory;
+  some bootloaders (GRUB) and some BIOSes take care of this;
+  Disable interrupts.
+  Load the Global Descriptor Table Register (GDTR) with a pointer to the GDT containing the OS' segment descriptors.
+  Load the Task Regisiter (TR) with a simple Task State Segment so that protected-mode interrupt handling will work properly.
+  Turn on protected mode (enable virtual memory paging system).
+  Force CPU to load new 32-bit protected mode segment selectors by performing a long-jump to the next instruction. (in protected mode after long jum)
+  Set the other segment registers to the kernel-data segment selector value.
+  Load the Interrupt Descriptor Table Register (IDTR) with a pointer to the interrupt descriptor table for the OS.
+\item[What happens once we switch from real to protected mode?]
+  OS kernel ready to take over
+\item[What are plug-and-play buses?]
+  PCI, USB, FireWire, PC Card/PCMCIA; OS identify and configures hardware devices automatically
+\item[What is ACPI?]
+  Advanced configuratio nand Power Interface standard for hardware discovery, config, power management, and monitoring;
+  OS must search for ACPI Root System Descriptor Pointer
+\item[How do you find the Root System Descriptor Pointer (RSDP)?]
+  look for RSD PTR starting on 16-byte boundary, compute structure's checksum to verify it is 0
+\item[What is Unified Extensible Firmware Interface (UEFI)?]
+  replacement for BIOS since you can't use it after switching to protected mode;
+  replaces old BIOS interface with new, modular, extensible firmware;
+  prompted by 64-bit Intel Itanium processor, which couldn't run BIOS;
+  still needed to support an OS - EUFI was developed as the firmware interface standard
+\item[What is the EFI system partition?]
+  first partition of a disk in the system
+\item[What did Logical Block Addressing (LBA) replace?]
+  CHS
+\item[Why are GUID partition tables (GPT) important?]
+  if it gets corrupted, you can't get to the rest of the data;
+  maintain two GPTs at beginning and end of disk to reduce risk of corruption (doesn't work for SSD controller failure)
 \end{document}
