@@ -328,7 +328,6 @@
 
 \begin{description}
 \section{Lecture 6 - IA32 OS Startup UEFI firmware - 1/18/17}
-\end{description}
 \item[What is the IA32 Bootstrap process?]
   At power on, IA32 processor starts executing instructions at address 0xFFFFFFF0;
   BIOS bootstrap code performs a power-on self test;
@@ -367,4 +366,752 @@
 \item[Why are GUID partition tables (GPT) important?]
   if it gets corrupted, you can't get to the rest of the data;
   maintain two GPTs at beginning and end of disk to reduce risk of corruption (doesn't work for SSD controller failure)
+\end{description}
+
+\begin{description}
+\section{Lecture 7 - The Process Abstraction - 1/20/17}
+\item[What is a process??]
+  instance of a program in execution;
+  process consists of program's instructions, CPU state, memory state, other resources
+\end{description}
+
+\begin{description}
+\section{Lecture 8 - Processes and Threads, Threading Models - 1/23/17}
+\item[How do we get concurrency?]
+  multiple concurrent threads of execution in a process;
+  needs changes to the process model
+\item[What needs to be managed on a per thread level?]
+  stack and stack pointer, program counter, CPU registers
+\item[Why multithreaded processes?]
+  performance; cleaner abstraction for concurrent operations
+\item[How does performance improve?]
+  responsiveness - applications that perform slow/long-running tasks can use background threads, foreground thread responds to user interactions immediately;
+  scalability - e.g. large science/math computation;
+  resource sharing and economy - much faster to create/destroy threads, context-switching between multiple threads in same process much faster;
+  cleaner abstraction
+\item[Does web browser require multiple CPUs to yield a benefit?]
+  yes, CPU mostly waiting even with single processor; not CPU bound (IO bound)
+\item[Does scalability require multiple CPUs to yield a benefit?]
+  yes, threads will mostly be CPU-bound, not I/O bound;
+  multiple threads will probably make program slower
+\item[What is the difference between concurrency and parallelism?]
+  concurrency - means that multiple tasks have overlapping logical control flows;
+  parallelism means that multiple taks are actually executing at the same time
+\item[Which one requires multiple processors?]
+  parallelism
+\item[How much speedup can we expect with more CPUs?]
+  not a speedup of N because computations have certain parts that must be performed sequentially, and cannot be parallelized
+\item[What is Amdahl's Law?]
+  Given a task where S is the percentage of the task that must be executed serially and takes 1 unit of time on single-processor machine, on a N-processor machine, the task
+  will take $S + \frac{(1 - S)}{N}$ units of time to run
+\item[What is Amdahl's Law bad news for?]
+  speeding up fixed-size task by adding processors
+\item[How can threads by implemented?]
+  multithreading entirely in user mode - very limited;
+  provide threading support in kernel;
+\item[What are threading models?]
+  many-to-one threading model;
+  one-to-one threading - every usre thread to it's own kernel thread;
+  many-to-many or hybrid threading model - many user threads mapped to many (usually fewer) kernel threads - appears to be best solution but difficult to implement (Windows 7)
+  scheduler activations (most widely used) - kernel communicates with user-space threading library (Marcel)
+\end{description}
+
+\begin{description}
+\section{Lecture 9 - Title - 1/25/17}
+\item[]
+\end{description}
+
+\begin{description}
+\section{Lecture 10 - Multithreading and Synchronization - 1/27/17}
+\item[What are race conditions]
+  multiple control paths accessing shared state concurrently
+\item[How do we avoid race conditions?]
+  identify a critical section - piece of code that must nto be executed concurrently by multiple control paths;
+\item[What is mutual exclusion?]
+  carefully control entry into the critical section to allow only one thread of execution
+\item[What is Peterson's Algorithm?]
+  two processes repeatedly entering a critical section;
+  state intention to enter critical section and let other process go first
+\item[What are other software solutions?]
+  Dekker's algorithm , Lamport's bakery algorithm, Syzmanki's algorithm
+\item[What are the problems with these algorithms?]
+  processes must busy-wait in these solutions;
+  software solutions will fail in the context of out-of-order execution - compilers and advanced processors frequently reorder the execution of instrcutions to mazimiize pipelining/etc.
+\item[How does hardware solve the second problem?]
+  barriers - prevent out-of-order execution when it matters
+\item[What are optimization barriers?]
+  prevent instructions before the barrier from being mixed with instructions after the barrier
+\item[How are optimization barriers implemented?]
+  tell compiler that operation changes all memory locations
+\item[When are optimization barriers invoked?]
+  between acquiring a lock and interacting with the shared state for the lock
+\item[What is the problem with optimization barriers?]
+  does not prevent CPU from reordering instructions at runtime
+\item[What are memory barriers?]
+  prevent certain kinds of instruction-reordering at the processor level;
+  read and write memory barriers
+\item[What is another simple solution to prevent concurrent access?]
+  disable hardware interrupts; cli and cli instructions
+\item[When doesn't this work?]
+  multiprocessor systems since it only turns off interrupts on one processor
+\item[What do we do to solve these cases?]
+  possible to disable interrupt handling on all processors but bad/slow;
+  use spin locks; if lock is not available, actively polled in a tight loop until available
+\item[When are spin locks useless?]
+  single-core systems
+\item[What two scenarios prommpt spin-lock use?]
+  cannot context-switch away from control path (interrupt context);
+  lock is expected to be held for a short time ,and want to avoid overhead of context-switch
+\item[When must you be careful using spin locks?]
+  when control paths can be nested - could deadlock;
+  disable local interrupts before acquiring spin lock
+\item[What are some guidelinse for spin locks?]
+  spin locks onoly useful on multiprocessor systems (single processor - just disable interrupt processing);
+  spin locks should be held for only a short timee;
+  if more than on control path on same CPU can enter critical section, must disable interrupts before locking
+\item[What are requirements for deadlock?]
+  mutual exclusion; hold and wait; no preemption; circular wait
+\item[How can you solve deadlock?]
+  break one of the requirements
+\item[Which are the easist requirements to break?]
+  no circular wait - easy to create order of processes so it isn't circular;
+  no prememption - if process cannot acquire a resource, relinquish lock on all its other resources
+\item[How do you deal with with deadlock?]
+  use deadlock avoidance - selectively fails resource-requests to prevent deadlocks;
+  Banker's algorithm, would/wait and wait/die algorithms
+\item[What are semaphores?]
+  allows two or more processes to coordinate their actions;
+  block until acquiring semaphore
+\item[What is the difference between a binary semaaphore and a mutex?]
+  binary semaphore - can be used between processes to communicate (one process can always signal and the other can always wait - no notion of ownership);
+  mutexes - simplified versions of binary semaphores (only the process that locks the mutex can unlock it)
+\item[What are other multithreading difficulties?]
+  two collaborative threads that are always nice and keep running;
+  starvation - one thread never gets to run;
+  fairness
+\item[Why is kernel programming different?]
+  no general-purpose allocator - can't have pointers in linked list to structures because defragmentation and memory issues are real;
+  avoid dynamically allocating memory;
+  interrupt handlers need to run as quickly as possible (making everyone wait)
+\end{description}
+
+\begin{description}
+\section{Lecture 11 - Concurrent Access to Shared Data Structures - 1/30/17}
+\item[How should we protect a linked list from concurrent access?]
+  single lock to guard entire list - issue is that readers shouldn't ever block other readers (high lock contention);
+  shared exclusive lock aka read/write lock (share mode or exclusive mode)
+\item[What are the issues with read/write lock?]
+  readers must acquire a lock every time they access the shared resource; threads incur lock overhead;
+  writers still block everybody
+\item[What is solution?]
+  decrease the granularity of the lock; read/write lock on each node; still not great since tradeoffs;
+  Read-copy-update (RCU) - changes shared data so concurrent readers never see intermediate state
+\end{description}
+
+
+\begin{description}
+\section{Lecture 12 - Process Scheduling - 2/1/17}
+\item[What is process scheduling]
+  managing allocation and sharing of hardware resources to applications that use them;
+  most important resource is CPU;
+  want to have multiple concurrently executing processes;
+\item[Which of the three types of scheduling do we care about?]
+  short-term scheduler - all OSes have this;
+  not long-term scheduler which schedules batch jobs
+\item[What does the kernel schedule?]
+  kernel threads, not processes
+\item[What two important tasks does schedule() do?]
+  1. choose the next kernel thread to run on the CPU;
+  2. switch from current kernel thread to the new kernel thread
+\item[Whatis the second part handled by?]
+  dispatcher
+\item[Why does switching between kernel threads involve three threads?]
+  machine context switches from switch\_threads(A, B) to switch\_threads(B, C) and retains A by returning it
+\item[How do we evaluate scheduling algorithms?]
+  CPU utilization, throughput, turnaround time, waiting time, response time
+\item[What are most schedulers?]
+  nonpreemptive or cooperative
+\item[What is the simplest algorithm?]
+  FIFO scheduling
+\item[How do you get round robin scheduling?]
+  add preemption to FCFS - processes get a fized time slice;
+  system performance directly affected by how large time slice is
+\item[What is Shortest-Job-First-Scheduling (SJF)?]
+  schedule orders based on how long their next CPU burst is expected to be;
+  minimizes average waiting time of processes;
+  biggest challenge is predicting length of next CPU burst - use exponential average of previous bursts;
+  example of priority scheduling
+\item[Why do we want to use fixed point integers?]
+  programs use floating point so we want to minimize use of those registers
+\item[What if SJF is preemptive?]
+  it becomes shortest-remaining-time-first;
+  starvation issues
+\item[What are characteristics of priority scheduling?]
+  can be preemptive or not; vulnerable to starvation (lower-priority proccesses) - solve by applying age that increases priority;
+  priority inversion (Mars Pathfinder)
+\item[What happened on the Mars Pathfinder?]
+  high-priority process responsible for resetting a watchdog timer;
+  high and low priority processes shared lockable resource;
+  medium-priority processes prevented high-priority task from running, causing spacecraft to reset frequently
+\item[How do you solve priority inversion?]
+  random boosting - scheduler randomly boosts priority of waiting proccesses to nudge system out of priority inversion;
+  priority ceiling - every lockable resource is assigned a priority ceiling: highest priority of any process allowed to lock it;
+  priority donation - priority gets donated by highest priority waiting for a lock
+\item[What is multilevel queue scheduling?]
+  maintains a queue for each category of process - queues have a decreasing priority, processes are permantly assigned to a specific queue;
+  system processes (highest), interactive processes (high), interactive editing processes (medium), batch processes (low);
+  can also divide CPU time across subset of queues
+\item[What is multilevel feedback queue scheduling?]
+  process' bewhavior can change from foreground to background (Matlab);
+  programs can go into compute intensive tasks;
+  multilevel feedback queue scheduling allows processes to move between the different priority queues;
+  favor short jobs and processes that frequently block on I/O, separate processes based on runtime behavior;
+  multiple FIFOs maintained; if process is preempted send to the next lower queue; lower-priority processes promoted for good behavior;
+  Windows and MAC use this
+\end{description}
+
+
+\begin{description}
+\section{Lecture 13 - Process Scheduling - 2/3/17}
+\item[What is event latency?]
+  amount of time between event occuring and when it is serviced
+\item[What are hard real time systems (vs soft)?]
+  require tasks to be serviced before deadline or system fails
+\item[What affects the system's response time?]
+  interrupt latency - time between interrupt occuring and interrupt service routine beginning to run;
+  dispatch latency - time the scheduler takes to switch from one process to another
+\item[What increases interrupt latency a lot?]
+  disabling interrupts - real time systems must disable interrupts for as short as possible
+\item[What are implications of dispatch latency?]
+  real-time process must be highest priority and OS must support preemption of lower-priority processes by higher-priority ones;
+  lower-priority processes must be forced to release their resources
+\item[How are deadlines determined for real time processes?]
+  they are periodic so we can use that to determine when it must start by
+\item[What is an admission control algorithm?]
+  real-time processes state requirements and if OS cannot schedule based on requirements, it rejects the scheduling request
+\item[What is rate-monotonic scheduling?]
+  tasks assigned priority inversely based on period
+\item[How do we tell if a set of real-time processes can be scheduled?]
+  As number of processes approaches infinity, CPU utilization cannot be greater than 0.69;
+  for N real time processes, CPU utilization no more than $N(2^{1/N} - 1)$
+\item[What is earliest deadline first (EDF) scheduling algorithm?]
+  earlier deadline is higher priority; theoretically optimal in terms of CPU utilization;
+  not optimal in real life since event latency imposes overhead
+\item[How does the Linux 2.4 scheduler work?]
+  time divided into epochs; at start of epoch, processes get priority based on behavior;
+  priority used to compute time quantum before it would be preempted;
+  at start of each epoch, iterate through all processes to compute priority;
+  several O(N) computations
+\item[How does the Linux 2.6 O(1) scheduler work?]
+  processes maintained in priority array where each level has queue of processes;
+  bitmap records which priority levels have runable processes;
+  constant time to find highest priority process;
+  two priority arrays - one with processes with remaining time and other with processes that used up their quantum;
+  epoch over when active priority array is empty;
+  very complicated and hard to maintain
+\item[How does the Linux Completely Fair Scheduler (CFS) work?]
+  ensure each process gets its fair share of CPU (fair share based on process' priority);
+  scheduler maintains a virtual run time - virtual clock inversely scaled by process' priority (clock runs slower for high-priority processes);
+  all ready processes maintained in a red-black tree ordered by increasing virtual run times O(logN) time to insert a process into the tree;
+  leftmost process has run for the shortest time and should start next;
+  sepeeerate variable to keep track of leftmost process - O(1) lookup;
+  CRS scheduler chooses a time quantum based on targeted latency of system ( time interval in which every ready process should receive the CPU at least once);
+  if total number of processes increases, targeted latency can increase
+\item[What are general behaviors of Linux CFS?]
+  processes that block or yield frequently will receive CPU very quickly
+\item[What is stride scheduling?]
+  tune passage of time on per process basis depending on process priority
+\end{description}
+
+\begin{description}
+\section{Lecture 14 - System Call Implementation - 2/6/17}
+\item[How do user applications interact with kernel?]
+  using system calls = typically invoked via a trap instruction
+\item[What does the kernel register a handler for?]
+  a specific trap int \$0x80 for Linux, \$0x30 for Pintos
+\item[What is hard?]
+  can't easily pass arguments to system calls on the stack;
+  trap instruction causes the CPU to switch operating modes from user to kernel;
+  different operating modes have different stacks
+\item[How are argumetns and return vlaues paassed to and from system calls?]
+  registers
+\item[How do we get around the size of the registers?]
+  split larger arguments among mutlple registers, store larger arguments in a struct, pass a pointer to struct as argument
+\item[How does the operating system frequently expose system calls?]
+  standard library;
+  UNIX - C standard library (libc);
+  windows syscalls exposed through Native API (ntapi.dll)
+\item[What name should you use for system calls?]
+  sys\_write() for write()
+\item[Why is cdecl nice?]
+  if function is passed more arguments than it expects, the extra arguments are ignored
+\item[Are there potential security holes in acceptiing pointers as arguments to systems calls?]
+  generally pointers are expected to be in user space;
+  must verify that all addresses are in userspace;
+  check if between 0x08048000 and 0xc0000000 (simpler to check if address is below 0xc0000000 in Linux/Pintos)
+\item[What is the hardest part of the assignment?]
+  What interrupts what?
+  Race conditions because process starts and loads its program and caller may need to know if it has started yet
+\end{description}
+
+\begin{description}
+\section{Lecture 15 - Signal Handling - 2/8/17}
+\item[How do you handle signals?]
+  create signal handlers
+\item[What is ucontext\_t used for?]
+  user-space threading library
+\item[What two bit-vectors are maintained for every process?]
+  pending and blocked
+\item[How does a kernel distinguish states of signals?]
+  generating vs delivering
+\item[What are the two ways a signal can be handled?]
+  signal is ignored or signal has a user-mode handler
+\item[How do we know what user process we are in (which we know because of int \$0x80?]
+  it is in eax which is stored in register state of interrupted process
+\item[Why would a process long-jump out of signal handler?]
+  doesn't want to restore the old execution state
+\end{description}
+
+\begin{description}
+\section{Lecture 16 - Kernel Memory Allocators - 2/10/17}
+\item[What complex data structures do kernels keep in memory?]
+  process control blocks, file descriptors, filesystem inodes, \dots
+\item[What are the two kinds of memory allocation in the kernel?]
+  add pageees to the virtual address space of the kernel or of a specific user process (palloc);
+  allocate a chunk of memory for use by the kernel (malloc) - handled by kernel memory allocator
+\item[What is the primary requirement of the kernel allocator?]
+  it must be fast
+\item[Where is kernel memory allocator called from?]
+  interrupt context (little available memory)
+\item[What are the two modes of kernel allocators?]
+  allocation request is in interrupt context - cannot sleep (avoid failing to satisfy request by having extra space);
+  allocation request is in process context - can sleep;
+\item[What else do kernels have to do well?]
+  handle memory fragmentation
+\item[What are the two types of fragmentation?]
+  external fragmentation - allocated blocks and free blocks become interspersed;
+  internal fragmentation - caused by constraints imposed by the allocation strategy itself (e.g. allocator only hands out memory in blocks that are multiples of 1 KB in size);
+  internal fragmentation depends on allocation algorithm
+\item[How do kernel allocators frequently avoid fragmentation?]
+  allocate-free-reallocate
+\item[What is the simplest kernel allocator?]
+  resource map allocator (aka sequential fits or explicit free list allocator);
+  maintains simple list of free region <base, size> pairs
+\item[What are the benefits of this kernel allocator?]
+  very simple to implement, almost no internal fragmentation, can implement first-fit, best-fit, next-fit policies very easily
+\item[What are the drawbocks of this kernel allocator?]
+  prone to external fragmentation (issue when program runs for a longer time);
+  much slower than other kernel allocators
+\item[What are power-of-two free list allocators?]
+  round up allocation requests to next power of two; keep an array of free lists instead of one free list;
+  allocation is usually very fast; freeing is usually equally fast
+\item[How do you tell what list corresponds ot the allocated block?]
+  one word of allocated blocks used to store the free-list, hurts because you usually want blocks in powers of two of size (50\% of block's space lost)
+\item[What happens ot handle case when blocks of required size aren't available?]
+  take a larger block and split repeatedly into smaller blocks;
+  coalescing becomes hard; reclaiming entire pages becomes difficult since it may have blocks across multiple free lists
+\item[What are benefits of power-of-two free list allocators?]
+  very fast allocation and deallocatoin;
+  very good at reusing previous allocations of a given size;
+  very resilient against external fragmentation
+\item[What are drawbacks of power-of-two free list allocators?]
+  suffers badly from internal fragmentation issues (around 28\%);
+  internal fragmentation magnified by fact that allocated blocks lose a word to remember their corresponding free-list;
+  coalescing and page reclamation very difficult without additional time/memory overhead
+\item[What is another option than splitting blocks?]
+  request a new virtual page and split the entire page into blocks of the same size;
+  record memory size on page instead of block (major benefit);
+  McKusick-Karels allocator;
+  used in 4.3 BSD UNIX kernel
+\item[What are binary buddy allocators?]
+  always works with regions that are a power of 2 in size;
+  inititally entire memory pool is a single free block of maximum size order;
+  block of order i can be split into two adjacent blocks of order i - 1;
+  split blocks are buddies (can only coallesce with each other);
+  internal fragmentation is bad;
+  figure out buddy by XORing one bit (the offset of block from start of memory pool with block size;
+  internal fragmentation is still a huge problem (works well for managing virtual pages)
+\end{description}
+
+\begin{description}
+\section{Lecture 17 - Kernel Memory Allocators (continued) - 2/13/17}
+\item[How does virtual memory reduce overhead of kernel page-table management?]
+  translation lookaside buffers must be flushed every time a CPU's page table changes
+\item[What is a zone allocator?]
+  zone is cache of objects of a specific type and size;
+  zone structure records details;
+  used by MAC
+\item[What is a slab allocator?]
+  identical conecpt to zone allocator, different implementation details (Sun Solaris 2.4);
+  slab is sequence of virtual memory pages;
+  cache holds kernel objects of a specific type (similar to Mach's zones);
+  cache has zero or more slabs for storing kernel objects
+\item[What does Linux use?]
+  slab allocator;
+  slabs can be in three different possible states - full, empty, partial
+\end{description}
+
+\begin{description}
+\section{Lecture 18 - Process Virtual Memory - 2/15/17}
+\item[What is applicaiton binary interface (ABI)?]
+  specification for how executable programs must be laid out in memory
+\item[When is absolute code generated?]
+  if the location sof functions and data can be set at comple time
+\item[When is relocatable code generated?]
+  if a program's location can vary from invocation to invocation
+\item[What is position independent code?]
+  all accesses are relative to the start of the binary in memory;
+  program determines starting address at runtime
+\item[What does UNIX Executable and Linkable Format (ELF) support?]
+  absolute and relocatable binary programs
+\item[What do relocatable object files (*.o) include?]
+  include extra details specifying the locations of function and memory accesses within the binary file
+\item[Why do we like virtual memory?]
+  process isolation, multiple programs that want to use the same address;
+  simplifies the design of the ABI (application binary interface)
+\item[How does swap work?]
+  swaps portion out onto hard disk instead of standard swapping which moves entire process in or out;
+  on phones, asks (or forces) other processes to relinquish memory
+\item[What is a simple strategy for the memory management unit (MMU)?]
+  relocation - relocate all virtual memory by constant amount
+\item[What is the segmentation strategy?]
+  virtual addresses include segment number which is used to find an entry in the segment table
+\item[How can OSes mitigate fragmentation?]
+  compacting physical memory
+\item[What is the difference between memcopy and memmove?]
+  one is for non-overlapping regions, the other can be for overlapping regions
+\item[What is the most common technique for mapping virtual addresses to physical addresses?]
+  paging;
+  blocks of physical memory called frames;
+  blocks of virtual memory called pages;
+  no external fragmentation since memory is always allocated or released in page-size chunks;
+  limited amount of internal fragmentation;
+  use TLBs
+\item[What do many systems use to support larger address spaces?]
+  hierarchical paging
+\item[How many times do you have to do slow address lookups on a n-level page table hierarchy?]
+  n times
+\item[How is this fixed?]
+  hashed page tables (issue is hash collisions)
+\item[What can systems with large address spaces use?]
+  clustered page tables - entries in hash table hold multiple virtual/physical mappings
+\item[What are inverted page tables?]
+  store physical-to-virtual instead of physical-to-virtual
+\item[How do we solve shared memory on inverted page tables?]
+\end{description}
+
+\begin{description}
+\section{Lecture 19 - Process Virtual Memory Part 2 - 2/17/17}
+\item[What are the big benefits from virtual memory abstraction?]
+  process isolation important for multitasking; simplified application binary interface (ABI);
+  one of the greatest benefits is ability to move pages to and from backing storage
+\item[What is necessary to support moving pages between physical memory and backing store?]
+  need a valid/invalid bit
+\item[What does MMU do if bit is invalid?]
+  MMU generates a page fault allowing OS kernel to resolve the fault
+\end{description}
+
+\begin{description}
+\section{Lecture 20 - Virtual Memory Management - 2/22/17}
+\item[How does the kernel manage virtual memory?]
+  frequently uses memory area descriptors, info about physical page frames, info about swap space used
+\item[How are details about a page frame stored?]
+  in a frame table; Is the page in the frame pinned? What process(es) are using each page
+\item[What is the alternative to pinning?]
+  maintain own I/O buffers but requires data to be copied twice instead of once and uses up more virtual memory than is strictly required
+\item[Why should we support pinning?]
+  some or all of kernel pages are pinned; can be used to manage newly swapped-in processes;
+\item[What do larger multiprocessor systems often implement?]
+  Non-Uniform Memory Access (NUMA) - processor has own dedicated memory
+\item[How is frame info tracked?]
+  kernel needs small structures (Linux page descriptors are 32 bytes)
+\item[Where can the page in a frame originate from?]
+  anonymous memory - contents do not come from a specific filesystem file - must be stored in swap when evicted;
+  memory-mapped file - can be stored in original file or in swap area;
+\item[What are the options for the pages that must be stored in swap?]
+  dedicated swap partition or swap file managed on computer's system;
+  dedicated swap partition generally much faster
+\item[What is storage used for page swapping divided into?]
+  swap slots;
+  required operations - find a free slot to store page and save page to slot; load a page from slot and release slot for reuse
+\item[What does Linux use?]
+  a swap map to describe slots in a swap area to keep track of which slots are available;
+  uses available bits in page for additional info;
+  supports many swap areas;
+  swap slot identified by two values - index of the swap area, and the index of the slot within the area
+\item[When a page frame must be reclaimed, how to choose which page to evict from memory?]
+  page replacement policy
+\item[How many page frames should each process be allowed to occupy?]
+  page allocation strategy
+\item[What is the goal of page replacement policy?]
+  minimize number of page faults that occur over time;
+  given a sequence of memory accesses, simulate page replacement policy and determine its page-fault rate
+\item[What is Belady's anomaly?]
+  in FIFO page-replacement policy, in certain access pattern, increasing number of page frames, increases number of page faults
+\item[What is a better policy?]
+  optimal or clairvoyant replacement policy;
+  in CS24 - can use one page frame to implement
+\end{description}
+
+\begin{description}
+\section{Lecture 21 - Virtual Memory Management Part 2 - 2/24/17}
+\item[HW5 hints]
+  lock in disk controller code
+\item[What is a simple page replacement policy?]
+  FIFO;
+  Belady's anomaly - sometimes the page-fault rate goes up, as the number of frames in the system is increased
+\item[What is the optimal page replacement policy?]
+  need to know the future, impossible unless program behaves deterministically
+\item[How do we approximate the optimal policy?]
+  use past to predict the future;
+  LRU (least recently used) - when a page must be evicted, always choose the one that was used furthest in the past
+\item[What is the advantage of LRU?]
+  no Belady's Anomaly
+\item[What is the disadvantage of LRU?]
+  hard to implement in virtual memory because have to do it on the level of every memory access
+\item[What are the two general approaches for implementing LRU?]
+  use counter to record last time each page is accessed;
+  extend page-table entries to hold the counter value (issue is that the TLB cache will fill up quicker which means the system will be slower);
+  another disadvantage is that eviction takes $O(n)$ time
+  use queue to track access order;
+  slower on accesses but eviction is faster big O but the per-memory-access cost is significantly higher;
+  too slow for virtual memory systems
+\item[How can you approximate the LRU?]
+  MMUs usually maintain several bits in page table entries: accessed bit and dirty bit
+\item[What is a policy to approximate LRU?]
+  Not Frequently Used policy - maintain a counter for each page in memory which is updated periodically;
+  bad because it doesn't forget history
+\item[What is a better policy?]
+  aging policy - b-bit value for each page;
+  on periodic timer, OS traverses all pages in memory and shift the age to the right by one bit and set topmost bit to current state of access;
+  pages with more recent accesses will have a larger value than pages accessed before;
+  does well with 8 to 16 bits per page
+\item[What is second-chance replacement policy?]
+  if the pag'es accessed bit is 1, clear the accessed bit and then move the page back to the end of the FIFO;
+  otherwise evict page at front of FIFO
+\item[What happens if all pages have their “accessed” bits set?]
+  second-chance becomes FIFO
+\item[What is Not Recently Used (NRU)?]
+  classify by accessed and dirty bits; choose a page from lowest class
+\item[What is the working-set based policy?]
+  takes a window and look at accesses in the window; everything outside the window is not in working set
+\item[What is the WSClock policy?]
+  virtual clock for each process that only advances while program is running;
+  pages kept in circular queue; each page has a time of last use;
+  all pages examined on a periodic timer interrupt;
+  if page is dirty, schedule page to be written back to disk and continue looking for a clean page;
+  bias of evicting dirty pages
+\item[What if we traverse all pages while looking for a victim in the WSClock policy?]
+  Possibility 1: at least one write was scheduled;
+  Possibility 2: no writes were scheduled
+\item[How can you enhance page replacement policies?]
+  page bufferint techniques;
+  maintain a pool of free page frames; pages are periodically reclaimed from active proccessses and put in appopriate pool;
+\item[What is LRU-K?]
+  examines time of the Kth most recent access, not just the most recent access;
+  combines both recency and frequency considerations
+\item[In what cases does LRU-2 outperform LRU?]
+  LRU-2 is scan-resistant - it will quickly evict pages that are scanned through once, and then not accessed again;
+  good for databases which scan often
+\item[What is Adaptive Replacement Cache (ARC) policy?]
+  developed and patented by IBM;
+  maintains two LRU queues;
+  ghost entries can be used to tune the cache's behavior;
+  generally much better than LRU
+\item[What is the open source version?]
+  CAR
+\end{description}
+
+\begin{description}
+\section{Lecture 22 - Virtual Memory Management Part 3 - 3/1/17}
+\item[What two things can the OS control for frames?]
+  how many frames are allocated to each process; degree of multiprogramming (how many processes are currently running) - not true anymore
+\item[What is primary goal of the page allocation policy?]
+  make sure all processes have enough frames to perform their tasks;
+  try to keep page fualt rate to reasonable level
+\item[What is thrashing?]
+  amount of paging I/O grows so high that it begins to impede system performance;
+  when total number of page frames that all processes are using exceeds hte total number of frames available in the system
+\item[What is the working set of the process?]
+  set of pages a process is currently using
+\item[What is the degree of multiprogramming?]
+  number of processes currently running on the system
+\item[How do OSes control the degree of multiprogramming?]
+  medium-term scheduling can be guided by page-fault rates
+\item[What is a global replacement policy?]
+  OS can acquire the new frame from any process that is currently running;
+  flexibility in assigning frames; all processes suffer due to other processes;
+  used by most OS's
+\item[What is a local replacement policy?]
+  acquire the new frame from the process that suffered the page-fault;
+  one process doesn't affect other processes nearly as much; number of frames assigned to each process isn't as fine tuned
+\item[What are some simple page allocation policies?]
+  equal allocation policy - give each process an equal number of pages;
+  proportional allocaiton policy - assigns each process a number of frames proportional to its virtual memory size
+\item[What is the issue with the simple policies?]
+  very susceptible to the degree of multiprogramming;
+  medium-term scheduling needed to eliminate thrashing
+\item[How do you estimate the working set size of a process?]
+  Aging page-replacement policy
+\item[Most widespread OS's don't actually have a long-term or medium-term scheduler. What do they rely on?]
+  page-fault frequency of various processes;
+  specify lower- and upper-bound on page-fault rate;
+  won't necessarily prevent thrashing
+\item[What do modern OSes use?]
+  simple page allocation policy, more sophisticated page replacement policy;
+  user is medium/long-term scheduler
+\item[What does Linux do?]
+  demand-zero paging - pages are never allocated to a process until they are used;
+  modified Clock algorithm that maintains an age for every page;
+  ages decay to zero; higher ages indicate frequent recent accesses (recency and frequency)
+\item[What does Windows do?]
+  relies on processes to state their working set (actually resident set - number of pages the process has in physical memory);
+  processes are given a default min and max resident set size;
+  will trim working sets of all processes if page-fault rate becomes unacceptably high; pages periodically aged
+\end{description}
+
+\begin{description}
+\section{Lecture 23 - File Systems - 3/3/17}
+\item[Why do programs require persistent storage?]
+  need a way to specify the program
+\item[What is the motivation behind large data-sets?]
+  want to allow multiple processes to access and manipulate large data-sets taht are much larger than system memory size;
+  read in blocks
+\item[What format must file contents follow?]
+  general-purpose OSes don't care;
+  older systems would have constraints on file formats due to the characteristics of their storage devices;
+  purpose-built OSes may also contraint files to follow a specific format
+\item[What is the portion before the extension called?]
+  base name
+\item[What cares about filename capilization?]
+  UNIXes respects case; others don't (MS-DOS, Mac OSX)
+\item[What is the problem with contiguous allocation?]
+  can compact free space in device; programs need to write additional data
+\item[What are extents?]
+  contiguous region of space on storage device
+\item[What is data fragmentation?]
+  file is broken into many parts and spread all over the storage device;
+  CDs, DVDs, and tapes all use contiuous allocation
+\item[What is linked allocation?]
+  files are comprised of a sequence of blocks that are linked together;
+  could have issues with data fragmentation;
+  good for sequential access, terrible for direct access;
+  compaction isn't necessary
+\item[What is file-allocation table (FAT)?]
+  instead of linked list like linked allocation, put it in a table;
+  As storage devices grow in size, run into two problems;
+  as storage devices grow, FAT might not have enough table entries (original had 8 bits per table entry, FAT16 has 16 bits per entry, FAT32 has 32,\dots)
+\item[How do you solve the problem of large disks using FAT file systems?]
+  allocate files in clusters, not in blocks;
+  each cluster contains a fixed number of blocks;
+  causes severe internal fragmentation issues storing small files on large devices
+\item[what is indexed allocation?]
+  achieves benefits of linked allocaiton while also being very fast for direct access;
+  overhead is the index;
+  Option 1: linked sequence of index blocks (good for smaller files);
+  Option 2: multilevel index structure (index page can reference other index pages, or it can reference data blocks in the file itself (but not both);
+  Option 3: hybrid approach (double indirect blocks)
+\item[What is the overhead from indexed allocation?]
+  index
+\item[What is the difficult things to balance?]
+  concerns for small and large files;
+  don't want small files to waste space with mostly-empty index;
+  don't want large files to incur a lot of work from navigating many small index blocks
+\item[What was a linked sequence good and bad for?]
+  good for small data, bagd for large data;
+  why do we use 4 KiB pages in files, matches up well
+\item[What is a multilevel index structure good for?]
+  NTFS implemented using B tree
+\item[What is a hybrid approach that blends other approaches?]
+  UNIX Ext2 - Root index node (i-node) holds file metadata
+\end{description}
+
+\begin{description}
+\section{Lecture 24 - File Systems Part 2 - 3/6/17}
+\item[Why does the OS maintain a buffer of storage blocks in memory?]
+  storage device sare often much slower than the CPU; use caching to improve performance of reads and writes
+\item[What must an OS deal with when different processes perform reads and writes on the same open file?]
+  in general, multiple reads on the same file generally never block each other
+\item[What is the most important situation to get right?]
+  appending to the file (file extension lock to make it atomic and never overlap)
+\item[How is concurrent file access governed by OSes?]
+  entier files can be locked in shared of rexclusive mode;
+  advisory file-locking (flock, lockf (regions of file));
+\item[What two things do you need to do for file delection?]
+  1. Delete reference.
+  2. Make file blocks available for other files to use.
+  3. Clear contents of space previously occupied.
+\item[How do you manage free space?]
+  use a bitmap with one bit per block;
+  if a block is free, corresponding bit is 1;
+  if a block is in use, the corresponding bit is 0
+\item[How can you manage free space?]
+  a bitmap with one bit per block;
+  linked list of free blocks - simple approach but doesn't work as well on storage devices
+\item[What is data remanence?]
+  storage devices frequently contain the old contents of deleted or truncated files;
+  file-undelete utilities, computer forensics when investigating crimes
+\item[What are Solid State Drives?]
+  SSDs are block devices; reads and writes are a fixed size;
+  include a flash trnaslation layer tha maps logical block addresses to physical memory cells;
+  erase 4 blocks at a time, write to 1 block at a time
+\item[What is write amplification?]
+  sometimes write to the SSD incurs addtional writes within the SSD because it must delete a series of blocks with non-old data;
+  expected to last 5 years or more
+\item[What must SSDs carefully manage?]
+  where to move data to avoid uneven wear of its memory cells
+\item[How does the SSD know when a cell's contents are no longer needed?]
+  when a new cell is written
+\item[What is the problem with this strategy?]
+  it doesn't handle file deletion
+\item[What solved the problem with deletion on SSDs?]
+  TRIM command
+\item[What are the big lessons?]
+  VC is expensive;
+  it is not all price (contracts, controls, etc.);
+  ask who is providing capital and how
+\end{description}
+
+\begin{description}
+\section{Lecture 26 - Journaling File Systems - 3/10/17}
+\item[What problems does the operating system have with a cache of filesystem data?]
+  Operating systems and hardware crash. Many filesystem operations involve multiple steps.
+\item[How did ext2 handle these problems?]
+  maintains a mount states which is set to valid when it is cleanly unmounted
+\item[What is fsck?]
+  File System Consistency checK
+\item[What would fsck do?]
+  go through all the inodes and make sure the size matches the number of blocks referenced;
+  make sure all directory entries reference inodes;
+  exhaustive checks are slow
+\item[How can you ensure robustness without so much overhead?]
+  log transactions against the filesystem in journal;
+  no ACID properties (no concurrency control); just atomicity
+\item[What should be logged in a journal transaction?]
+  only journal changes to metadata (changes to directory structures, inode information, free space map, any other structures the filesystem maintains);
+  changes to file data are not journaled
+\item[What ordering rule can improve robustness?]
+  all data-changes must be written to disk before any metadata-changes are logged to the journal
+\item[What three journaling modes does ext3/ext4 support?]
+  Writeback - only records metadata changes;
+  Ordered records - records metadata changes after the corresponding data changes have been written to the device (default mode);
+  Journal - records both data and metadata change sinto the journal
+\item[How are atomic operations performed?]
+  added to current transaction until fixed amount of time passes or not enough room to record another atomic operation;
+  file system will lock transaction; it is in the flush state (crash during this state means the transaction is aborted during recovery;
+  once transaction logs are fully written, enters the commit state (actual filesystem changes haven't been completed;
+  once the changes have been written to the filesystem, it is finished
+\item[What rule must be held?]
+  no changes may be made to the filesystem metadata itsel until the journal on disk reflects all changes being made in the transaction (commit state)
+\item[What does this enable?]
+  don't need any undo processing, just need redo processing since we only redo transactions that were committed but not finished
+\item[What are the benefits of filesystem journaling?]
+  filesystems become significantly more robust;
+  I/O performance on HDDs improves - logs to the journal are all sequential which is fast, filesystem must batch up writes to data and metadata to perform at specific times
+\item[What are alternatives to incorporating a journal into the filesystem?]
+  soft updates - OS can carefully order changes so the filesystem never becomes corrupt (Unix File System (UFS) uses soft updates (Fast File System in BSD));
+  log-structured file systems - use the journal as the file-sytem instead of having separate file-system disk structures and journal area
+  (sequential writes a lot faster but reads require skipping through log - magnetic device performance worse);
+  copy-on-write file systems - never modify old data in place, perform a single atomic update that changes from using hte old data to using the new data (B-tree File System (Btrfs));
+\end{description}
 \end{document}
